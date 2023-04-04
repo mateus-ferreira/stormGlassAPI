@@ -1,52 +1,80 @@
 import { StormGlass } from '../../../src/clients/stormGlass';
 import stormglassNormalizedResponseFixture from '../../../test/fixtures/stormglass_normalized_response_3_hours.json';
-import stormglassWeatherPointFixture from '../../../test/fixtures/stormglass_weather_3_hours.json';
-import axios from 'axios';
+import * as stormglassWeatherPointFixture from '../../../test/fixtures/stormglass_weather_3_hours.json';
+import * as HTTPUtil from '../../util/request'
 
-jest.mock('axios');
+jest.mock('../../util/request');
 
 describe('StormGlass client', () => {
-    const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+    const MockedRequestClass = HTTPUtil.Request as jest.Mocked<typeof HTTPUtil.Request>
+
+    const mockedRequest = new HTTPUtil.Request() as jest.Mocked<HTTPUtil.Request>
     it('should return the normalized forecast from the StormGlass service', async () => {
         const lat = -33.792726;
         const lng = 151.289824;
 
-        mockedAxios.get.mockResolvedValue({ data: stormglassWeatherPointFixture });
+        mockedRequest.get.mockResolvedValue({
+            data: stormglassWeatherPointFixture,
+        } as HTTPUtil.Response);
 
-        const stormGlass = new StormGlass(mockedAxios);
+        const stormGlass = new StormGlass(mockedRequest);
         const response = await stormGlass.fetchPoints(lat, lng);
         expect(response).toEqual(stormglassNormalizedResponseFixture);
     });
 
     it('should exclude incomplete data points', async () => {
-       const lat = -33.792726;
-       const lng = 151.289824;
-       const incompleteResponse = {
-           hours: [
-               {
-                   windDirection: {
-                       noaa: 300,
-                   },
-                   time: '2020-04-26-00:00:00+00:00',
-               },
-           ],
-       };
-       mockedAxios.get.mockResolvedValue({data: incompleteResponse});
+        const lat = -33.792726;
+        const lng = 151.289824;
+        const incompleteResponse = {
+            hours: [
+                {
+                    windDirection: {
+                        noaa: 300,
+                    },
+                    time: '2020-04-26-00:00:00+00:00',
+                },
+            ],
+        };
+        mockedRequest.get.mockResolvedValue({ data: incompleteResponse } as HTTPUtil.Response);
 
-       const stormGlass = new StormGlass(mockedAxios);
-       const response = await stormGlass.fetchPoints(lat, lng);
+        const stormGlass = new StormGlass(mockedRequest);
+        const response = await stormGlass.fetchPoints(lat, lng);
 
-       expect(response).toEqual([]);
+        expect(response).toEqual([]);
     });
 
     it('should get a generic error from StormGlass service when the request fail before reaching the service', async () => {
         const lat = -33.792726;
         const lng = 151.289824;
 
-        mockedAxios.get.mockResolvedValue({ message: 'Network Error' });
+        mockedRequest.get.mockRejectedValue('Network Error');
 
-        const stormGlass = new StormGlass(mockedAxios);
+        const stormGlass = new StormGlass(mockedRequest);
 
-        await expect(stormGlass.fetchPoints(lat, lng)).rejects.toThrow('Unexpected error when trying to communicate to StormGlass: Network Error');
+        await expect(stormGlass.fetchPoints(lat, lng)).rejects.toThrow(
+            'Unexpected error when trying to communicate to StormGlass: Network Error'
+        );
+    });
+
+    it('should get an StormGlassResponseError when the StormGlass service responds with error', async () => {
+        const lat = -33.792726;
+        const lng = 151.289824;
+
+        MockedRequestClass.isRequestError.mockReturnValue(true);
+        mockedRequest.get.mockRejectedValue({
+            response: {
+                status: 429,
+                data: {
+                    errors: ['Rate Limit reached'],
+                },
+            },
+        });
+
+        const stormGlass = new StormGlass(mockedRequest);
+
+        await expect(stormGlass.fetchPoints(lat, lng)).rejects.toThrow(
+            'Unexpected error returned by the StormGlass service: Error: {"errors":["Rate Limit reached"]} Code: 429'
+        );
     });
 });
