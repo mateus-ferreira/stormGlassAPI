@@ -1,17 +1,21 @@
 import { StormGlass } from '../../../src/clients/stormGlass';
 import stormglassNormalizedResponseFixture from '../../../test/fixtures/stormglass_normalized_response_3_hours.json';
 import * as stormglassWeatherPointFixture from '../../../test/fixtures/stormglass_weather_3_hours.json';
-import * as HTTPUtil from '../../util/request';
+import * as HTTPUtil from '../../../src/util/request';
 
-jest.mock('../../util/request');
+jest.mock('../../../src/util/request');
 
 describe('StormGlass client', () => {
+    /**
+     * Used for static method's mocks
+     */
     const MockedRequestClass = HTTPUtil.Request as jest.Mocked<
-        typeof HTTPUtil.Request
+      typeof HTTPUtil.Request
     >;
-
-    const mockedRequest =
-        new HTTPUtil.Request() as jest.Mocked<HTTPUtil.Request>;
+    /**
+     * Used for instance method's mocks
+     */
+    const mockedRequest = new HTTPUtil.Request() as jest.Mocked<HTTPUtil.Request>;
     it('should return the normalized forecast from the StormGlass service', async () => {
         const lat = -33.792726;
         const lng = 151.289824;
@@ -34,7 +38,7 @@ describe('StormGlass client', () => {
                     windDirection: {
                         noaa: 300,
                     },
-                    time: '2020-04-26-00:00:00+00:00',
+                    time: '2020-04-26T00:00:00+00:00',
                 },
             ],
         };
@@ -57,7 +61,7 @@ describe('StormGlass client', () => {
         const stormGlass = new StormGlass(mockedRequest);
 
         await expect(stormGlass.fetchPoints(lat, lng)).rejects.toThrow(
-            'Unexpected error when trying to communicate to StormGlass: Network Error'
+          'Unexpected error when trying to communicate to StormGlass: "Network Error"'
         );
     });
 
@@ -65,20 +69,30 @@ describe('StormGlass client', () => {
         const lat = -33.792726;
         const lng = 151.289824;
 
+        class FakeAxiosError extends Error {
+            constructor(public response: object) {
+                super();
+            }
+        }
+
+        mockedRequest.get.mockRejectedValue(
+          new FakeAxiosError({
+              status: 429,
+              data: { errors: ['Rate Limit reached'] },
+          })
+        );
+
         MockedRequestClass.isRequestError.mockReturnValue(true);
-        mockedRequest.get.mockRejectedValue({
-            response: {
-                status: 429,
-                data: {
-                    errors: ['Rate Limit reached'],
-                },
-            },
+
+        MockedRequestClass.extractErrorData.mockReturnValue({
+            status: 429,
+            data: { errors: ['Rate Limit reached'] },
         });
 
         const stormGlass = new StormGlass(mockedRequest);
 
         await expect(stormGlass.fetchPoints(lat, lng)).rejects.toThrow(
-            'Unexpected error returned by the StormGlass service: Error: {"errors":["Rate Limit reached"]} Code: 429'
+          'Unexpected error returned by StormGlass service: Error: {"errors":["Rate Limit reached"]} Code: 429'
         );
     });
 });
