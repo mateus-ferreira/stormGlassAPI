@@ -5,7 +5,7 @@ import bodyParser from 'body-parser';
 import { ForecastController } from './controllers/forecast';
 import * as database from './database';
 import { BeachesController } from './controllers/beaches';
-import { UsersController } from "./controllers/users";
+import { UsersController } from './controllers/users';
 
 export class SetupServer extends Server {
     /*
@@ -35,7 +35,11 @@ export class SetupServer extends Server {
         const forecastController = new ForecastController();
         const beachesController = new BeachesController();
         const usersController = new UsersController();
-        this.addControllers([forecastController, beachesController, usersController]);
+        this.addControllers([
+            forecastController,
+            beachesController,
+            usersController,
+        ]);
     }
 
     private async databaseSetup(): Promise<void> {
@@ -49,7 +53,7 @@ export class SetupServer extends Server {
     public start(): void {
         this.app.listen(this.port, () => {
             console.info(`Server listening on port: ${this.port}`);
-        })
+        });
     }
 
     public getApp(): Application {

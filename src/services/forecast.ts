@@ -19,12 +19,15 @@ export class Forecast {
     constructor(protected stormGlass = new StormGlass()) {}
 
     public async processForecastForBeaches(
-      beaches: Beach[]
+        beaches: Beach[]
     ): Promise<TimeForecast[]> {
         const pointsWithCorrectSources: BeachForecast[] = [];
         try {
             for (const beach of beaches) {
-                const points = await this.stormGlass.fetchPoints(beach.lat, beach.lng);
+                const points = await this.stormGlass.fetchPoints(
+                    beach.lat,
+                    beach.lng
+                );
                 const enrichedBeachData = this.enrichBeachData(points, beach);
                 pointsWithCorrectSources.push(...enrichedBeachData);
             }
@@ -51,8 +54,8 @@ export class Forecast {
     }
 
     private enrichBeachData(
-      points: ForecastPoint[],
-      beach: Beach
+        points: ForecastPoint[],
+        beach: Beach
     ): BeachForecast[] {
         return points.map((e) => ({
             ...{},
