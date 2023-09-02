@@ -24,7 +24,7 @@ export default class AuthService {
 
     public static generateToken(payload: object): string {
         return jwt.sign(payload, 'some-key', {
-            expiresIn: config.get('App.auth.tokenExpiresIn'),
+            expiresIn: 20000000,
         });
     }
 
