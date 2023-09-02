@@ -63,13 +63,6 @@ export class StormGlassResponseError extends InternalError {
     }
 }
 
-/**
- * We could have proper type for the configuration
- */
-const stormglassResourceConfig: IConfig = config.get(
-  'App.resources.StormGlass'
-);
-
 export class StormGlass {
     readonly stormGlassAPIParams =
       'swellDirection,swellHeight,swellPeriod,waveDirection,waveHeight,windDirection,windSpeed';
